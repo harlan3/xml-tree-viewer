@@ -68,11 +68,64 @@ public class XmlTreeViewer {
         Document doc = builder.parse(xmlFile);
         doc.getDocumentElement().normalize();
 
-        // Build the tree
+        // Build tree
         DefaultMutableTreeNode rootTreeNode = createTreeNode(doc.getDocumentElement());
         JTree tree = new JTree(rootTreeNode);
         tree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
         JScrollPane scrollPane = new JScrollPane(tree);
+
+        // === Search Controls ===
+        JTextField searchField = new JTextField(20);
+        JButton searchButton = new JButton("Find");
+
+        // === Font Size Slider ===
+        JSlider fontSlider = new JSlider(10, 30, 14);
+        fontSlider.setMajorTickSpacing(5);
+        fontSlider.setMinorTickSpacing(1);
+        fontSlider.setPaintTicks(true);
+        fontSlider.setPaintLabels(true);
+        fontSlider.setToolTipText("Adjust font size");
+
+        fontSlider.addChangeListener(e -> {
+            int size = fontSlider.getValue();
+            Font currentFont = tree.getFont();
+            tree.setFont(new Font(currentFont.getName(), currentFont.getStyle(), size));
+        });
+
+        // === Search Button Action ===
+        searchButton.addActionListener(e -> {
+            String query = searchField.getText().trim().toLowerCase();
+            if (!query.isEmpty()) {
+                boolean found = searchAndSelect(tree, rootTreeNode, query);
+                if (!found) {
+                    JOptionPane.showMessageDialog(null, "No match found.");
+                }
+            }
+        });
+
+        // === Top Panel with Search & Font Size Slider ===
+        JPanel topPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+
+        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.anchor = GridBagConstraints.WEST;
+
+        gbc.gridx = 0;
+        topPanel.add(new JLabel("Search:"), gbc);
+
+        gbc.gridx = 1;
+        topPanel.add(searchField, gbc);
+
+        gbc.gridx = 2;
+        topPanel.add(searchButton, gbc);
+
+        gbc.gridx = 3;
+        topPanel.add(new JLabel("Font size:"), gbc);
+
+        gbc.gridx = 4;
+        gbc.weightx = 1.0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        topPanel.add(fontSlider, gbc);
 
         // === Expand / Collapse Buttons ===
         JButton expandButton = new JButton("Expand All Below Selected Node");
@@ -96,42 +149,23 @@ public class XmlTreeViewer {
             }
         });
 
-        // === Search Panel ===
-        JTextField searchField = new JTextField(20);
-        JButton searchButton = new JButton("Find");
-
-        searchButton.addActionListener(e -> {
-            String query = searchField.getText().trim().toLowerCase();
-            if (!query.isEmpty()) {
-                boolean found = searchAndSelect(tree, rootTreeNode, query);
-                if (!found) {
-                    JOptionPane.showMessageDialog(null, "No match found.");
-                }
-            }
-        });
-
-        JPanel searchPanel = new JPanel(new FlowLayout());
-        searchPanel.add(new JLabel("Search:"));
-        searchPanel.add(searchField);
-        searchPanel.add(searchButton);
-
-        // === Button Panel ===
         JPanel buttonPanel = new JPanel(new FlowLayout());
         buttonPanel.add(expandButton);
         buttonPanel.add(collapseButton);
 
         // === Frame Layout ===
-        JFrame frame = new JFrame("XML Viewer with Expand/Collapse and Search");
+        JFrame frame = new JFrame("XML Viewer with Search, Font Size, Expand/Collapse");
         frame.setLayout(new BorderLayout());
+        frame.add(topPanel, BorderLayout.NORTH);
         frame.add(scrollPane, BorderLayout.CENTER);
-        frame.add(searchPanel, BorderLayout.NORTH);
         frame.add(buttonPanel, BorderLayout.SOUTH);
-        frame.setSize(700, 600);
+        frame.setSize(800, 600);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setVisible(true);
     }
 
-    // Recursively create tree nodes from XML
+    // === Helper Methods ===
+
     private static DefaultMutableTreeNode createTreeNode(Node xmlNode) {
         String displayText = xmlNode.getNodeName();
 
@@ -165,7 +199,6 @@ public class XmlTreeViewer {
         return treeNode;
     }
 
-    // Expand all children recursively
     private static void expandAll(JTree tree, TreePath parent) {
         TreeNode node = (TreeNode) parent.getLastPathComponent();
         if (node.getChildCount() >= 0) {
@@ -178,7 +211,6 @@ public class XmlTreeViewer {
         tree.expandPath(parent);
     }
 
-    // Collapse all children recursively
     private static void collapseAll(JTree tree, TreePath parent) {
         TreeNode node = (TreeNode) parent.getLastPathComponent();
         if (node.getChildCount() >= 0) {
@@ -191,14 +223,11 @@ public class XmlTreeViewer {
         tree.collapsePath(parent);
     }
 
-    // Search tree for matching node text (case-insensitive)
     private static boolean searchAndSelect(JTree tree, DefaultMutableTreeNode root, String query) {
         Enumeration<TreeNode> enumeration = root.depthFirstEnumeration();
-
         while (enumeration.hasMoreElements()) {
             DefaultMutableTreeNode node = (DefaultMutableTreeNode) enumeration.nextElement();
             String nodeText = node.getUserObject().toString().toLowerCase();
-
             if (nodeText.contains(query)) {
                 TreePath path = new TreePath(node.getPath());
                 tree.scrollPathToVisible(path);
@@ -209,3 +238,12 @@ public class XmlTreeViewer {
         return false;
     }
 }
+        
+        
+        
+        
+        
+        
+        
+        
+       
