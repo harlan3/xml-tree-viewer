@@ -24,13 +24,19 @@ import javax.xml.parsers.*;
 import jargs.gnu.CmdLineParser;
 
 import java.awt.*;
+import java.awt.datatransfer.*;
+import java.awt.event.*;
 import java.io.File;
-import java.util.Enumeration;
+import java.util.*;
+import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class XmlTreeViewer {
 
+	private static List<TreePath> searchMatches = new ArrayList<>();
+    private static int currentMatchIndex = -1;
+    
 	private static void printUsage() {
 
 		System.out.println("Usage: XmlTreeViewer [OPTION]...");
@@ -63,9 +69,9 @@ public class XmlTreeViewer {
 			printUsage();
 			System.exit(0);
 		}
-    	
+
         // Load XML file
-        File xmlFile = new File(fileValue);
+        File xmlFile = new File(fileValue); // Replace with your file
         DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
         Document doc = builder.parse(xmlFile);
         doc.getDocumentElement().normalize();
@@ -76,13 +82,23 @@ public class XmlTreeViewer {
         tree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
         JScrollPane scrollPane = new JScrollPane(tree);
 
-        // === Path Display Field ===
+        // === Path Display ===
         JTextField pathField = new JTextField();
         pathField.setEditable(false);
         pathField.setForeground(Color.DARK_GRAY);
         pathField.setFont(new Font("Monospaced", Font.PLAIN, 12));
 
-        // Listen for selection changes to update path
+        JButton copyPathButton = new JButton("Copy Path");
+        copyPathButton.addActionListener(e -> {
+            String path = pathField.getText();
+            if (!path.isEmpty()) {
+                StringSelection selection = new StringSelection(path);
+                Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+                clipboard.setContents(selection, null);
+            }
+        });
+
+        // Update path when selection changes
         tree.addTreeSelectionListener(e -> {
             TreePath selectedPath = tree.getSelectionPath();
             if (selectedPath != null) {
@@ -96,6 +112,11 @@ public class XmlTreeViewer {
         // === Search Controls ===
         JTextField searchField = new JTextField(20);
         JButton searchButton = new JButton("Find");
+        JButton nextButton = new JButton("Next");
+        JButton prevButton = new JButton("Previous");
+
+        nextButton.setEnabled(false);
+        prevButton.setEnabled(false);
 
         // === Font Size Slider ===
         JSlider fontSlider = new JSlider(10, 30, 14);
@@ -111,48 +132,76 @@ public class XmlTreeViewer {
             tree.setFont(new Font(currentFont.getName(), currentFont.getStyle(), size));
         });
 
-        // === Search Action ===
+        // === Search Logic ===
         searchButton.addActionListener(e -> {
             String query = searchField.getText().trim().toLowerCase();
+            searchMatches.clear();
+            currentMatchIndex = -1;
+
             if (!query.isEmpty()) {
-                boolean found = searchAndSelect(tree, rootTreeNode, query);
-                if (!found) {
-                    JOptionPane.showMessageDialog(null, "No match found.");
+                Enumeration<TreeNode> enumeration = rootTreeNode.depthFirstEnumeration();
+                while (enumeration.hasMoreElements()) {
+                    DefaultMutableTreeNode node = (DefaultMutableTreeNode) enumeration.nextElement();
+                    String nodeText = node.getUserObject().toString().toLowerCase();
+                    if (nodeText.contains(query)) {
+                        searchMatches.add(new TreePath(node.getPath()));
+                    }
+                }
+
+                if (!searchMatches.isEmpty()) {
+                    currentMatchIndex = 0;
+                    highlightCurrentMatch(tree);
+                    nextButton.setEnabled(true);
+                    prevButton.setEnabled(true);
+                } else {
+                    JOptionPane.showMessageDialog(null, "No matches found.");
+                    nextButton.setEnabled(false);
+                    prevButton.setEnabled(false);
                 }
             }
         });
 
-        // === Top Panel with Path Display, Search, and Font Size ===
-        JPanel topPanel = new JPanel();
-        topPanel.setLayout(new BorderLayout());
+        nextButton.addActionListener(e -> {
+            if (!searchMatches.isEmpty()) {
+                currentMatchIndex = (currentMatchIndex + 1) % searchMatches.size();
+                highlightCurrentMatch(tree);
+            }
+        });
 
-        JPanel searchAndFontPanel = new JPanel(new GridBagLayout());
+        prevButton.addActionListener(e -> {
+            if (!searchMatches.isEmpty()) {
+                currentMatchIndex = (currentMatchIndex - 1 + searchMatches.size()) % searchMatches.size();
+                highlightCurrentMatch(tree);
+            }
+        });
+
+        // === Top Panel: Path + Copy + Search + Font ===
+        JPanel topPanel = new JPanel(new BorderLayout());
+
+        JPanel pathPanel = new JPanel(new BorderLayout(5, 0));
+        pathPanel.add(new JLabel("Path: "), BorderLayout.WEST);
+        pathPanel.add(pathField, BorderLayout.CENTER);
+        pathPanel.add(copyPathButton, BorderLayout.EAST);
+
+        JPanel searchFontPanel = new JPanel(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
-
-        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.insets = new Insets(4, 4, 4, 4);
         gbc.anchor = GridBagConstraints.WEST;
 
-        gbc.gridx = 0;
-        searchAndFontPanel.add(new JLabel("Search:"), gbc);
-
-        gbc.gridx = 1;
-        searchAndFontPanel.add(searchField, gbc);
-
-        gbc.gridx = 2;
-        searchAndFontPanel.add(searchButton, gbc);
-
-        gbc.gridx = 3;
-        searchAndFontPanel.add(new JLabel("Font size:"), gbc);
-
-        gbc.gridx = 4;
+        gbc.gridx = 0; searchFontPanel.add(new JLabel("Search:"), gbc);
+        gbc.gridx = 1; searchFontPanel.add(searchField, gbc);
+        gbc.gridx = 2; searchFontPanel.add(searchButton, gbc);
+        gbc.gridx = 3; searchFontPanel.add(prevButton, gbc);
+        gbc.gridx = 4; searchFontPanel.add(nextButton, gbc);
+        gbc.gridx = 5; searchFontPanel.add(new JLabel("Font size:"), gbc);
+        gbc.gridx = 6; gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.weightx = 1.0;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        searchAndFontPanel.add(fontSlider, gbc);
+        searchFontPanel.add(fontSlider, gbc);
 
-        topPanel.add(pathField, BorderLayout.NORTH);
-        topPanel.add(searchAndFontPanel, BorderLayout.SOUTH);
+        topPanel.add(pathPanel, BorderLayout.NORTH);
+        topPanel.add(searchFontPanel, BorderLayout.SOUTH);
 
-        // === Expand / Collapse Buttons ===
+        // === Expand/Collapse Panel ===
         JButton expandButton = new JButton("Expand All Below Selected Node");
         JButton collapseButton = new JButton("Collapse All Below Selected Node");
 
@@ -178,19 +227,27 @@ public class XmlTreeViewer {
         buttonPanel.add(expandButton);
         buttonPanel.add(collapseButton);
 
-        // === Frame Layout ===
-        JFrame frame = new JFrame("XML Viewer");
+        // === Final Frame ===
+        JFrame frame = new JFrame("XML Viewer with Dot Path, Multi-Search, Font, Expand/Collapse");
         frame.setLayout(new BorderLayout());
         frame.add(topPanel, BorderLayout.NORTH);
         frame.add(scrollPane, BorderLayout.CENTER);
         frame.add(buttonPanel, BorderLayout.SOUTH);
-        frame.setSize(800, 600);
+        frame.setSize(900, 600);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setVisible(true);
     }
 
-    // === Helper Methods ===
+    // === Highlight search result ===
+    private static void highlightCurrentMatch(JTree tree) {
+        if (!searchMatches.isEmpty() && currentMatchIndex >= 0) {
+            TreePath path = searchMatches.get(currentMatchIndex);
+            tree.setSelectionPath(path);
+            tree.scrollPathToVisible(path);
+        }
+    }
 
+    // === Recursively build tree ===
     private static DefaultMutableTreeNode createTreeNode(Node xmlNode) {
         String displayText = xmlNode.getNodeName();
 
@@ -224,6 +281,7 @@ public class XmlTreeViewer {
         return treeNode;
     }
 
+    // === Expand/collapse helpers ===
     private static void expandAll(JTree tree, TreePath parent) {
         TreeNode node = (TreeNode) parent.getLastPathComponent();
         if (node.getChildCount() >= 0) {
@@ -246,21 +304,6 @@ public class XmlTreeViewer {
             }
         }
         tree.collapsePath(parent);
-    }
-
-    private static boolean searchAndSelect(JTree tree, DefaultMutableTreeNode root, String query) {
-        Enumeration<TreeNode> enumeration = root.depthFirstEnumeration();
-        while (enumeration.hasMoreElements()) {
-            DefaultMutableTreeNode node = (DefaultMutableTreeNode) enumeration.nextElement();
-            String nodeText = node.getUserObject().toString().toLowerCase();
-            if (nodeText.contains(query)) {
-                TreePath path = new TreePath(node.getPath());
-                tree.scrollPathToVisible(path);
-                tree.setSelectionPath(path);
-                return true;
-            }
-        }
-        return false;
     }
 }
 
