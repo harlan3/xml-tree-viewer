@@ -26,6 +26,8 @@ import jargs.gnu.CmdLineParser;
 import java.awt.*;
 import java.io.File;
 import java.util.Enumeration;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class XmlTreeViewer {
 
@@ -74,6 +76,23 @@ public class XmlTreeViewer {
         tree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
         JScrollPane scrollPane = new JScrollPane(tree);
 
+        // === Path Display Field ===
+        JTextField pathField = new JTextField();
+        pathField.setEditable(false);
+        pathField.setForeground(Color.DARK_GRAY);
+        pathField.setFont(new Font("Monospaced", Font.PLAIN, 12));
+
+        // Listen for selection changes to update path
+        tree.addTreeSelectionListener(e -> {
+            TreePath selectedPath = tree.getSelectionPath();
+            if (selectedPath != null) {
+                String dotPath = IntStream.range(0, selectedPath.getPathCount())
+                        .mapToObj(i -> selectedPath.getPathComponent(i).toString().split(" = ")[0])
+                        .collect(Collectors.joining("."));
+                pathField.setText(dotPath);
+            }
+        });
+
         // === Search Controls ===
         JTextField searchField = new JTextField(20);
         JButton searchButton = new JButton("Find");
@@ -92,7 +111,7 @@ public class XmlTreeViewer {
             tree.setFont(new Font(currentFont.getName(), currentFont.getStyle(), size));
         });
 
-        // === Search Button Action ===
+        // === Search Action ===
         searchButton.addActionListener(e -> {
             String query = searchField.getText().trim().toLowerCase();
             if (!query.isEmpty()) {
@@ -103,29 +122,35 @@ public class XmlTreeViewer {
             }
         });
 
-        // === Top Panel with Search & Font Size Slider ===
-        JPanel topPanel = new JPanel(new GridBagLayout());
+        // === Top Panel with Path Display, Search, and Font Size ===
+        JPanel topPanel = new JPanel();
+        topPanel.setLayout(new BorderLayout());
+
+        JPanel searchAndFontPanel = new JPanel(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
 
         gbc.insets = new Insets(5, 5, 5, 5);
         gbc.anchor = GridBagConstraints.WEST;
 
         gbc.gridx = 0;
-        topPanel.add(new JLabel("Search:"), gbc);
+        searchAndFontPanel.add(new JLabel("Search:"), gbc);
 
         gbc.gridx = 1;
-        topPanel.add(searchField, gbc);
+        searchAndFontPanel.add(searchField, gbc);
 
         gbc.gridx = 2;
-        topPanel.add(searchButton, gbc);
+        searchAndFontPanel.add(searchButton, gbc);
 
         gbc.gridx = 3;
-        topPanel.add(new JLabel("Font size:"), gbc);
+        searchAndFontPanel.add(new JLabel("Font size:"), gbc);
 
         gbc.gridx = 4;
         gbc.weightx = 1.0;
         gbc.fill = GridBagConstraints.HORIZONTAL;
-        topPanel.add(fontSlider, gbc);
+        searchAndFontPanel.add(fontSlider, gbc);
+
+        topPanel.add(pathField, BorderLayout.NORTH);
+        topPanel.add(searchAndFontPanel, BorderLayout.SOUTH);
 
         // === Expand / Collapse Buttons ===
         JButton expandButton = new JButton("Expand All Below Selected Node");
@@ -154,7 +179,7 @@ public class XmlTreeViewer {
         buttonPanel.add(collapseButton);
 
         // === Frame Layout ===
-        JFrame frame = new JFrame("XML Viewer with Search, Font Size, Expand/Collapse");
+        JFrame frame = new JFrame("XML Viewer");
         frame.setLayout(new BorderLayout());
         frame.add(topPanel, BorderLayout.NORTH);
         frame.add(scrollPane, BorderLayout.CENTER);
@@ -238,7 +263,7 @@ public class XmlTreeViewer {
         return false;
     }
 }
-        
+
         
         
         
