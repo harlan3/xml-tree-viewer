@@ -228,7 +228,7 @@ public class XmlTreeViewer {
         buttonPanel.add(collapseButton);
 
         // === Final Frame ===
-        JFrame frame = new JFrame("XML Viewer with Dot Path, Multi-Search, Font, Expand/Collapse");
+        JFrame frame = new JFrame("XML Viewer");
         frame.setLayout(new BorderLayout());
         frame.add(topPanel, BorderLayout.NORTH);
         frame.add(scrollPane, BorderLayout.CENTER);
