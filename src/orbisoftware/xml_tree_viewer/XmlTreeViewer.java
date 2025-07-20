@@ -102,10 +102,36 @@ public class XmlTreeViewer {
 		tree.addTreeSelectionListener(e -> {
 			TreePath selectedPath = tree.getSelectionPath();
 			if (selectedPath != null) {
-				String dotPath = IntStream.range(0, selectedPath.getPathCount())
-						.mapToObj(i -> selectedPath.getPathComponent(i).toString().split(" = ")[0])
-						.collect(Collectors.joining("."));
-				pathField.setText(dotPath);
+				StringBuilder namePathBuilder = new StringBuilder();
+
+				for (int i = 0; i < selectedPath.getPathCount(); i++) {
+					Object node = selectedPath.getPathComponent(i);
+					String nameValue = null;
+
+					// Check if this node has a child that is a "name" node
+					if (nameValue == null && node instanceof DefaultMutableTreeNode) {
+						DefaultMutableTreeNode treeNode = (DefaultMutableTreeNode) node;
+						Enumeration<?> children = treeNode.children();
+						while (children.hasMoreElements()) {
+							Object child = children.nextElement();
+							String[] childParts = child.toString().split(" = ", 2);
+							if (childParts.length == 2 && childParts[0].trim().equals("name")) {
+								nameValue = childParts[1].trim();
+								break;
+							}
+						}
+					}
+
+					// Append to the path if a Name value was found
+					if (nameValue != null) {
+						if (namePathBuilder.length() > 0) {
+							namePathBuilder.append(".");
+						}
+						namePathBuilder.append(nameValue);
+					}
+				}
+
+				pathField.setText(namePathBuilder.toString());
 			}
 		});
 
