@@ -262,7 +262,7 @@ public class XmlTreeViewer {
 		buttonPanel.add(expandButton);
 		buttonPanel.add(collapseButton);
 
-		JFrame frame = new JFrame("Xml Viewer - Modifying " + fileValue);
+		JFrame frame = new JFrame("Xml Viewer - Viewing " + fileValue);
 		frame.setLayout(new BorderLayout());
 		frame.add(topPanel, BorderLayout.NORTH);
 		frame.add(scrollPane, BorderLayout.CENTER);
