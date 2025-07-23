@@ -40,7 +40,7 @@ public class XmlTreeViewer {
 	private static void printUsage() {
 
 		System.out.println("Usage: XmlTreeViewer [OPTION]...");
-		System.out.println("View XML tree.");
+		System.out.println("View Xml tree.");
 		System.out.println();
 		System.out.println("   -f, --file         XML file for viewing");
 		System.out.println("   -h, --help         Show this help message");
@@ -262,7 +262,7 @@ public class XmlTreeViewer {
 		buttonPanel.add(expandButton);
 		buttonPanel.add(collapseButton);
 
-		JFrame frame = new JFrame("XML Viewer");
+		JFrame frame = new JFrame("Xml Viewer - Modifying " + fileValue);
 		frame.setLayout(new BorderLayout());
 		frame.add(topPanel, BorderLayout.NORTH);
 		frame.add(scrollPane, BorderLayout.CENTER);
